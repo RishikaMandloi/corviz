@@ -1,0 +1,25 @@
+export const SCENE_PLAN_VERSION =
+  "1.0";
+
+export const SCENE_INTENT = {
+  INTRODUCTION: "INTRODUCTION",
+  EXPLANATION: "EXPLANATION",
+  COMPARISON: "COMPARISON",
+  PROCESS: "PROCESS",
+  EXAMPLE: "EXAMPLE",
+  SUMMARY: "SUMMARY",
+} as const;
+
+export const CAMERA_SHOT = {
+  WIDE: "WIDE",
+  MEDIUM: "MEDIUM",
+  CLOSE: "CLOSE",
+  OVERHEAD: "OVERHEAD",
+} as const;
+
+export const TRANSITION_TYPE = {
+  CUT: "CUT",
+  FADE: "FADE",
+  DISSOLVE: "DISSOLVE",
+  MORPH: "MORPH",
+} as const;
