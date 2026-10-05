@@ -34,6 +34,7 @@ export class TutorContextBuilder {
       verificationReport: pipeline?.verificationReport,
       narrationContext: pipeline?.narrationScript.at(-1)?.text,
       relatedStep,
+      quizQuestions: pipeline?.quiz.questions ?? [],
       conversation: request.conversation,
     };
   }

@@ -49,6 +49,9 @@ export default function Home() {
   const [error, setError] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [quizIndex, setQuizIndex] = useState(0);
+  const [quizScore, setQuizScore] = useState(0);
+  const [quizComplete, setQuizComplete] = useState(false);
   const [operationValue, setOperationValue] = useState("50");
   const [interactionLoading, setInteractionLoading] = useState(false);
   const [interactionError, setInteractionError] = useState("");
@@ -124,7 +127,7 @@ export default function Home() {
   };
   const activeScene = scenes[step] ?? scenes[scenes.length - 1];
   const activeRow = pipeline?.dryRun.rows[step] ?? pipeline?.dryRun.rows.at(-1);
-  const activeQuestion = pipeline?.quiz.questions[0];
+  const activeQuestion = pipeline ? pipeline.quiz.questions[quizIndex] : undefined;
   const activeNarration = getStepNarration(step) || activeScene?.narration?.text || activeRow?.description || "";
   const snapshot = useMemo(() => getStepSnapshot(step), [pipeline, step]);
 
@@ -527,6 +530,14 @@ export default function Home() {
     setTutorHistory([]);
   }, [selectedTopic]);
 
+  useEffect(() => {
+    setQuizIndex(0);
+    setQuizScore(0);
+    setQuizComplete(false);
+    setAnswer(null);
+    setFeedback("");
+  }, [pipeline?.pipelineId, selectedTopic]);
+
   const speakTutorAnswer = () => {
     if (!tutorAnswer || !("speechSynthesis" in window)) return;
     if (narrationEnabled && (playing || narrationSpeaking)) {
@@ -576,7 +587,29 @@ export default function Home() {
 
   const submitAnswer = () => {
     if (!activeQuestion || !answer) return setFeedback("Select an answer first.");
-    setFeedback(answer === activeQuestion.correctAnswerId ? `Correct — ${activeQuestion.explanation}` : `Not quite — ${activeQuestion.explanation}`);
+    const isCorrect = answer === activeQuestion.correctAnswerId;
+    setQuizScore((current) => current + (isCorrect ? 1 : 0));
+    setFeedback(isCorrect ? `Correct — ${activeQuestion.explanation}` : `Not quite — ${activeQuestion.explanation}`);
+
+    const totalQuestions = pipeline?.quiz.questions.length ?? 1;
+    if (quizIndex >= totalQuestions - 1) {
+      setQuizComplete(true);
+      return;
+    }
+
+    setTimeout(() => {
+      setQuizIndex((current) => current + 1);
+      setAnswer(null);
+      setFeedback("");
+    }, 700);
+  };
+
+  const resetQuiz = () => {
+    setQuizIndex(0);
+    setQuizScore(0);
+    setQuizComplete(false);
+    setAnswer(null);
+    setFeedback("");
   };
   const operationButtons: Record<string, string[]> = { STACK: ["PUSH", "POP", "PEEK"], QUEUE: ["ENQUEUE", "DEQUEUE", "PEEK"], BINARY_SEARCH: ["SEARCH"], BUBBLE_SORT: ["COMPARE_AND_SWAP"], LINEAR_SEARCH: ["SEARCH"], LINKED_LIST: ["INSERT_HEAD", "DELETE_HEAD"], BST: ["INSERT", "SEARCH"], SELECTION_SORT: ["FIND_MIN_AND_SWAP"], TWO_POINTERS: ["SWAP_AND_ADVANCE"], BFS: ["VISIT_AND_EXPAND"] };
 
@@ -742,7 +775,7 @@ export default function Home() {
         {pipeline && <article className={styles.sectionCard} id="verified-explanation"><h2>Verified explanation</h2><p className={styles.paragraph}>{pipeline.writtenExplanation.summary}</p><ul>{pipeline.writtenExplanation.invariants.map((invariant) => <li key={invariant}>{invariant}</li>)}</ul></article>}
         {pipeline && <article className={styles.sectionCard} id="dry-run"><h2>Deterministic dry run</h2><div className={styles.dryRunTable}>{pipeline.dryRun.rows.map((row) => <button key={row.step} className={styles.tableRow} type="button" onClick={() => setStep(row.step)} style={{ textAlign: "left", border: row.step === step ? "1px solid #60a5fa" : undefined }}><strong>{row.step}. {row.operation}</strong><span>{row.stateRepresentation}</span><small>{row.description}</small></button>)}</div></article>}
         {pipeline && <article className={styles.sectionCard} id="ai-tutor"><h2>AI Tutor</h2><div className={styles.tutorInputGroup}><textarea className={styles.tutorInput} value={tutorQuestion} onChange={(event) => setTutorQuestion(event.target.value)} placeholder="Ask about the current state, concept, or step..." rows={4} /></div><div className={styles.timelineRow}><button className={styles.primaryButton} type="button" onClick={askTutor} disabled={tutorLoading}>{tutorLoading ? "Asking…" : "Ask Tutor"}</button><button className={styles.smallButton} type="button" onClick={() => { setTutorQuestion(""); setTutorAnswer(""); setTutorError(""); setTutorHistory([]); }} disabled={!tutorQuestion && !tutorAnswer}>Clear</button>{tutorAnswer && <button className={styles.smallButton} type="button" onClick={speakTutorAnswer} disabled={narrationEnabled && (playing || narrationSpeaking)}>Read answer aloud</button>}</div>{tutorError && <p className={styles.feedback}>{tutorError}</p>}<div className={styles.tutorAnswer} aria-live="polite">{tutorAnswer || "Ask a question to get a verified explanation for the current topic and state."}</div>{tutorHistory.length > 0 && <div className={styles.tutorHistory}><strong>Recent questions</strong>{tutorHistory.slice(-3).map((item) => <div key={`${item.question}-${item.answer}`} className={styles.tutorHistoryItem}><p><strong>Q:</strong> {item.question}</p><p><strong>A:</strong> {item.answer}</p></div>)}</div>}</article>}
-        {activeQuestion && <article className={styles.sectionCard} id="knowledge-check"><h2>Verified knowledge check</h2><p className={styles.paragraph}>{activeQuestion.question}</p><div className={styles.quizOptions}>{activeQuestion.options.map((option) => <button key={option.id} className={`${styles.quizOption} ${answer === option.id ? styles.selectedOption : ""}`} type="button" onClick={() => setAnswer(option.id)}>{option.text}</button>)}</div><div className={styles.quizActions}><button className={styles.primaryButton} type="button" onClick={submitAnswer}>Check answer</button>{feedback && <p className={styles.feedback}>{feedback}</p>}</div></article>}
+        {activeQuestion && <article className={styles.sectionCard} id="knowledge-check"><h2>Verified knowledge check</h2>{pipeline && <p className={styles.paragraph}>Question {Math.min(quizIndex + 1, pipeline.quiz.questions.length)} of {pipeline.quiz.questions.length}</p>}<p className={styles.paragraph}>{activeQuestion.question}</p><div className={styles.quizOptions}>{activeQuestion.options.map((option) => <button key={option.id} className={`${styles.quizOption} ${answer === option.id ? styles.selectedOption : ""}`} type="button" onClick={() => setAnswer(option.id)}>{option.text}</button>)}</div><div className={styles.quizActions}><button className={styles.primaryButton} type="button" onClick={submitAnswer} disabled={!answer || quizComplete}>Check answer</button>{quizComplete && <button className={styles.smallButton} type="button" onClick={resetQuiz}>Restart quiz</button>}{feedback && <p className={styles.feedback}>{feedback}</p>}{quizComplete && pipeline && <p className={styles.paragraph}>Final score: {quizScore} / {pipeline.quiz.questions.length}</p>}</div></article>}
       </div>
     </section>
   </main></div>;

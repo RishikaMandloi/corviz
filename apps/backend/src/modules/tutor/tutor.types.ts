@@ -1,5 +1,6 @@
 import {
   IDryRunRow,
+  IQuizQuestion,
   IStateOperation,
   IStateSnapshot,
   IStateTransition,
@@ -31,6 +32,7 @@ export interface ITutorContext {
   verificationReport?: IVerificationResult;
   narrationContext?: string;
   relatedStep?: number;
+  quizQuestions?: IQuizQuestion[];
   conversation?: ITutorMessage[];
 }
 

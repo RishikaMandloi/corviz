@@ -43,7 +43,7 @@ class TutorService {
       };
     }
 
-    const validation = tutorResponseValidator.validate(response, context);
+    const validation = tutorResponseValidator.validate(response, context, question);
     const safeAnswer = validation.safeAnswer || this.buildFallback(context, question);
 
     return {

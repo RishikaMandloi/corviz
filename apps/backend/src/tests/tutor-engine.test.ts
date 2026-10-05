@@ -38,6 +38,10 @@ async function main(): Promise<void> {
 
   const concept = await tutorService.ask({ topicId: "STACK", question: "What is a stack?" });
   assert.match(concept.answer.toLowerCase(), /stack|last in first out|lifo/i);
+  assert.doesNotMatch(concept.answer, /current state is/i);
+
+  const whyAnswer = await tutorService.ask({ topicId: "STACK", question: "Why does a stack follow LIFO?" });
+  assert.match(whyAnswer.answer.toLowerCase(), /lifo|last-in|last in|first out|top/i);
 
   const currentState = await tutorService.ask({
     topicId: "STACK",
@@ -109,12 +113,40 @@ async function main(): Promise<void> {
     question: "What is the current top?",
     pipelineId: stackA.pipelineId,
   });
+  assert.match(stateDiff.answer.toLowerCase(), /50|top/i);
   const popDiff = await tutorService.ask({
     topicId: "STACK",
     question: "What is the current top?",
     pipelineId: stackB.pipelineId,
   });
   assert.notEqual(stateDiff.answer, popDiff.answer);
+
+  const stepExplanation = await tutorService.ask({
+    topicId: "STACK",
+    question: "Explain the current step",
+    pipelineId: stackA.pipelineId,
+  });
+  assert.match(stepExplanation.answer.toLowerCase(), /push|50|top|operation/i);
+
+  const moreQuiz = await tutorService.ask({
+    topicId: "STACK",
+    question: "Give me more quiz",
+    pipelineId: stackA.pipelineId,
+  });
+  assert.match(moreQuiz.answer, /question\s*1|question\s*2|quiz/i);
+
+  const fiveQuiz = await tutorService.ask({
+    topicId: "STACK",
+    question: "Give me 5 quiz questions",
+    pipelineId: stackA.pipelineId,
+  });
+  assert.match(fiveQuiz.answer, /5/i);
+
+  const helloAnswer = await tutorService.ask({ topicId: "STACK", question: "Hello" });
+  assert.doesNotMatch(helloAnswer.answer, /current state is|verified context/i);
+
+  const unsupported = await tutorService.ask({ topicId: "STACK", question: "Tell me about quantum computing" });
+  assert.match(unsupported.answer.toLowerCase(), /corviz|stack|queue|binary search|help with/i);
 
   await assert.rejects(
     () => tutorService.ask({ topicId: "UNKNOWN" as any, question: "What is a stack?" }),
