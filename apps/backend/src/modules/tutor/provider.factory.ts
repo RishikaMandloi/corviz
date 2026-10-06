@@ -24,12 +24,12 @@ export class NoopAiProvider implements IAiProvider {
       return this.buildQuizAnswer(context, normalized);
     }
 
-    if (this.isCurrentStateQuestion(lower)) {
-      return this.buildStateAnswer(context);
+    if (this.isStepQuestion(lower)) {
+      return this.buildStepAnswer(context, question);
     }
 
-    if (this.isStepQuestion(lower)) {
-      return this.buildStepAnswer(context);
+    if (this.isCurrentStateQuestion(lower)) {
+      return this.buildStateAnswer(context);
     }
 
     if (this.isConceptQuestion(lower)) {
@@ -58,8 +58,8 @@ export class NoopAiProvider implements IAiProvider {
   }
 
   private isCurrentStateQuestion(lower: string): boolean {
-    return /(?:current state|current top|what is the current|what is on top|which element is currently|what happens after|what is currently at the top|what is the top|top\?)/i.test(lower)
-      || /(?:top|front|current pointer|current state|state)/i.test(lower) && /(?:what|which|where|why|how)/i.test(lower);
+    return /(?:what is the current state|what is the current top|what is currently at the top|what is on top|what is the top|which element is currently.*top|current top|current state)/i.test(lower)
+      || /(?:top|front|current pointer|state)/i.test(lower) && /(?:what|which|where|identify|show)/i.test(lower) && !/current operation|operation\?/i.test(lower);
   }
 
   private isStepQuestion(lower: string): boolean {
@@ -73,7 +73,7 @@ export class NoopAiProvider implements IAiProvider {
   }
 
   private isWhyHowQuestion(lower: string): boolean {
-    return /(?:why|how)/i.test(lower) && !this.isCurrentStateQuestion(lower) && !this.isQuizRequest(lower);
+    return /(?:why|how)\b/i.test(lower) && !this.isCurrentStateQuestion(lower) && !this.isQuizRequest(lower);
   }
 
   private isUnsupportedQuestion(lower: string): boolean {
@@ -189,6 +189,9 @@ ${concept}`;
     const lower = question.toLowerCase();
 
     if (this.topicLabel(context.topicId) === "Stack (LIFO)") {
+      const currentTop = Array.isArray(context.currentState?.elements) && context.currentState.elements.length ? String(context.currentState.elements[context.currentState.elements.length - 1]) : undefined;
+      const operationName = context.currentOperation?.type ? context.currentOperation.type.toLowerCase() : "push";
+
       if (/lifo|last in first out|why does.*stack.*lifo/i.test(lower)) {
         return `A stack follows LIFO because it only permits access from the top. When a new value is pushed, it becomes the top element. The next pop must remove that newest value before anything below it can be reached, which is exactly the Last-In, First-Out rule.`;
       }
@@ -197,6 +200,10 @@ ${concept}`;
       }
       if (/pop|how does pop/i.test(lower)) {
         return `POP removes the top value and then repositions the top pointer to the next lower element. In a stack, this is the only valid removal point because the stack is defined by top-access-only semantics.`;
+      }
+      if (/(?:why.*top|why.*on top|why.*at the top|top.*why)/i.test(lower) || /\b\d+\b.*top|top.*\b\d+\b/i.test(lower)) {
+        const value = currentTop ?? "the most recent value";
+        return `Because a stack is LIFO, the newest valid value becomes the top. In the current verified lesson, ${value} is on top because the most recent ${operationName} operation inserted it at the Top position, and POP will remove it before any older element.`;
       }
     }
 

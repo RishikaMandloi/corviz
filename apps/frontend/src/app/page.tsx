@@ -550,8 +550,25 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   };
 
+  const ensureLivePipeline = async (topicId: string): Promise<Pipeline | null> => {
+    const current = pipelineRef.current ?? pipeline;
+    if (current && current.topic.id === topicId && current.verificationReport.valid) {
+      return current;
+    }
+
+    try {
+      const refreshed = await generateInteractiveSession(topicId, new AbortController().signal);
+      pipelineRef.current = refreshed;
+      setPipeline(refreshed);
+      return refreshed;
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Unable to recreate the verified lesson session.";
+      setTutorError(message);
+      return null;
+    }
+  };
+
   const askTutor = async () => {
-    if (!pipeline) return;
     const question = tutorQuestion.trim();
     if (!question) {
       setTutorError("Type a question before asking the tutor.");
@@ -560,6 +577,17 @@ export default function Home() {
 
     setTutorLoading(true);
     setTutorError("");
+
+    let effectivePipeline = pipelineRef.current ?? pipeline;
+    if (!effectivePipeline || effectivePipeline.topic.id !== selectedTopic || !effectivePipeline.verificationReport.valid) {
+      effectivePipeline = await ensureLivePipeline(selectedTopic);
+    }
+
+    if (!effectivePipeline) {
+      setTutorLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE}/tutor/ask`, {
         method: "POST",
@@ -567,13 +595,37 @@ export default function Home() {
         body: JSON.stringify({
           topicId: selectedTopic,
           question,
-          pipelineId: pipeline.pipelineId,
+          pipelineId: effectivePipeline.pipelineId,
           currentState: snapshot,
-          transition: pipeline.stateTrace.transitions.at(-1),
+          transition: effectivePipeline.stateTrace.transitions.at(-1),
         }),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.message ?? "Tutor request failed");
+      if (!response.ok) {
+        if (response.status === 404 && /pipeline session/i.test(body.message ?? "")) {
+          const refreshed = await ensureLivePipeline(selectedTopic);
+          if (!refreshed) throw new Error(body.message ?? "Tutor request failed");
+          const retry = await fetch(`${API_BASE}/tutor/ask`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topicId: selectedTopic,
+              question,
+              pipelineId: refreshed.pipelineId,
+              currentState: snapshot,
+              transition: refreshed.stateTrace.transitions.at(-1),
+            }),
+          });
+          const retryBody = await retry.json();
+          if (!retry.ok) throw new Error(retryBody.message ?? "Tutor request failed");
+          const answer = retryBody.data?.answer ?? "No answer available.";
+          setTutorAnswer(answer);
+          setTutorHistory((current) => [...current, { question, answer }]);
+          setTutorQuestion("");
+          return;
+        }
+        throw new Error(body.message ?? "Tutor request failed");
+      }
       const answer = body.data?.answer ?? "No answer available.";
       setTutorAnswer(answer);
       setTutorHistory((current) => [...current, { question, answer }]);

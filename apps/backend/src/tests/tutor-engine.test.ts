@@ -43,6 +43,21 @@ async function main(): Promise<void> {
   const whyAnswer = await tutorService.ask({ topicId: "STACK", question: "Why does a stack follow LIFO?" });
   assert.match(whyAnswer.answer.toLowerCase(), /lifo|last-in|last in|first out|top/i);
 
+  const conceptWithPipeline = await tutorService.ask({
+    topicId: "STACK",
+    question: "Explain Stack",
+    pipelineId: stackA.pipelineId,
+  });
+  assert.match(conceptWithPipeline.answer.toLowerCase(), /what is a stack|lifo|stack/i);
+  assert.doesNotMatch(conceptWithPipeline.answer, /current verified state is/i);
+
+  const operationQuestion = await tutorService.ask({
+    topicId: "STACK",
+    question: "What is the current operation?",
+    pipelineId: stackA.pipelineId,
+  });
+  assert.match(operationQuestion.answer.toLowerCase(), /push|operation|top/i);
+
   const currentState = await tutorService.ask({
     topicId: "STACK",
     question: "Why is 50 on top?",

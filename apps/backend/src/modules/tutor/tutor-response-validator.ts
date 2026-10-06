@@ -12,7 +12,14 @@ export class TutorResponseValidator {
     const stackTopClaims = [...answer.matchAll(/\b(?:the\s+)?top(?:\s+of\s+the\s+stack)?\s*(?:is|=|:)\s*([\w-]+)|\b([\w-]+)\s+(?:is|sits|remains)\s+(?:currently\s+)?(?:on\s+top|at\s+the\s+top)\b/gi)];
     const unsupportedStackTopClaim = context.topicId === "STACK" && topValue !== undefined && stackTopClaims.some((claim) => {
       const claimedValue = claim[1] ?? claim[2];
-      return claimedValue !== undefined && claimedValue !== String(topValue);
+      if (claimedValue === undefined || claimedValue === String(topValue)) {
+        return false;
+      }
+
+      const matchIndex = claim.index ?? 0;
+      const contextWindow = answer.slice(Math.max(0, matchIndex - 80), Math.min(answer.length, matchIndex + 80));
+      const isHypotheticalExample = /if\s+the\s+stack\s+contains|for\s+example|suppose|example/i.test(contextWindow);
+      return !isHypotheticalExample;
     });
 
     const contradictsInvariant = rules.some((rule) => {
