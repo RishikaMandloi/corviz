@@ -15,6 +15,7 @@ import progressRoutes from "./modules/progress/progress.routes";
 import quizAttemptRoutes from "./modules/quiz-attempt/quiz-attempt.routes";
 import pipelineRoutes from "./modules/pipeline/pipeline.routes";
 import tutorRoutes from "./modules/tutor/tutor.routes";
+import topicRoutes from "./modules/topic/topic.routes";
 
 import { errorHandler } from "./middlewares/error-handler";
 
@@ -86,6 +87,7 @@ app.use(
 );
 
 app.use("/api/v1", quizAttemptRoutes);
+app.use("/api/v1", topicRoutes);
 app.use("/api/v1", pipelineRoutes);
 app.use("/api/v1", tutorRoutes);
 

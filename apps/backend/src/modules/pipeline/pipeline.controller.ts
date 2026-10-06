@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { asyncHandler, sendResponse } from "../../utils";
 import { pipelineService } from "./pipeline.service";
-import { topicRegistry } from "../topic/topic.registry";
+import { topicRepository } from "../topic/topic.repository";
 import {
   IPipelineGenerateRequest,
   IPipelineInteractionRequest,
@@ -13,7 +13,7 @@ class PipelineController {
    * Returns all 10 supported topic metadata records.
    */
   getTopics = asyncHandler(async (_req: Request, res: Response) => {
-    const topics = topicRegistry.getAllMetadata();
+    const topics = await topicRepository.getVerifiedTopics();
     sendResponse(res, {
       statusCode: 200,
       message: "Supported topics fetched successfully.",

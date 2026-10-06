@@ -1,10 +1,12 @@
 import app from "./app";
 import { env } from "./config";
 import { connectDatabase } from "./database";
+import { topicRepository } from "./modules/topic/topic.repository";
 
 const startServer = async (): Promise<void> => {
   try {
     await connectDatabase();
+    await topicRepository.seedVerifiedCatalog();
 
     app.listen(env.PORT, () => {
       console.log(
